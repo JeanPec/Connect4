@@ -194,8 +194,6 @@ class Connect4 {
       this.checkDiagLeftUp(c - 1, r + 1) +
       this.checkDiagRightDown(c + 1, r - 1);
 
-    console.log('h: ', horizontal, 'd1: ', diag1, 'd2: ', diag2, 'do: ', down);
-
     return horizontal === 3 || diag1 === 3 || diag2 === 3 || down === 3;
   }
 
