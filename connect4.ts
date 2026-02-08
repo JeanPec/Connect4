@@ -1,26 +1,41 @@
 import * as readline from 'readline-sync';
 
-enum token {
-  red,
-  yellow,
+export enum token {
+  red = 'R',
+  win = 'W',
+  yellow = 'Y',
 }
-enum state {
-  continue,
-  win,
-  draw,
+export enum state {
+  continue = 'continue',
+  win = 'win',
+  draw = 'draw',
 }
 
 //Yellow always start
 const ROWS = 6;
 const COLS = 7;
 
-class Connect4 {
-  private grid: token[][] = [];
+const RED = '🔴';
+const WIN = '🟢';
+const RED_WIN = '❤️';
+const YELLOW = '🟡';
+const YELLOW_WIN = '💛';
+const EMPTY = '⚪';
+const BOARD_BORDER = '🟦';
+
+export class Connect4 {
+  private grid: (token | null)[][] = [];
   private currentToken = token.red;
   private state: state = state.continue;
 
-  constructor() {
-    this.grid = Array.from({ length: COLS }, () => Array(ROWS).fill(null));
+  constructor(
+    grid: (token | null)[][] = Array.from({ length: COLS }, () =>
+      Array(ROWS).fill(null),
+    ),
+    tokenToPlay = token.red,
+  ) {
+    this.grid = grid;
+    this.currentToken = tokenToPlay;
   }
 
   private displayWelcome(): void {
@@ -35,8 +50,6 @@ class Connect4 {
  |  \\____\\___/|_| \\_|_| \\_|_____|\\____| |_|      |_|             |
  |                                                               |
  |            -- THE ULTIMATE STRATEGY CHALLENGE --              |
- |                                                               |
- |           [ 1 ] START GAME      [ 2 ] EXIT                    |
  \\_______________________________________________________________/
     `;
     console.log(welcomeArt);
@@ -45,17 +58,12 @@ class Connect4 {
 
   private displayRedWin(): void {
     console.clear();
+    this.displayGrid();
     const redWins = `
-  ___________________________________________________
- /                                                   \\
- |   ____  _____ ____    __        _____ _   _ ____  |
- |  |  _ \\| ____|  _ \\   \\ \\      / /_ _| \\ | / ___| |
- |  | |_) |  _| | | | |   \\ \\ /\\ / / | ||  \\| \\___ \\ |
- |  |  _ <| |___| |_| |    \\ V  V /  | || |\\  |___) ||
- |  |_| \\_\\_____|____/      \\_/\\_/  |___|_| \\_|____/ |
- |                                                   |
- |             >>>>  RED IS VICTORIOUS  <<<<         |
- \\___________________________________________________/
+  _____________________________________
+ /                                     \\
+ |   **** RED TAKES THE CROWN ****      |
+ \\_____________________________________/
 `;
     console.log(redWins);
     console.log('\n');
@@ -63,17 +71,12 @@ class Connect4 {
 
   private displayYellowWin(): void {
     console.clear();
+    this.displayGrid();
     const yellowWins = `
-  ___________________________________________________
- /                                                   \\
- |  __   __ _____ _     _     _____  _ _ _  _  _     |
- |  \\ \\ / /| ____| |   | |   /  _  \\| | | || || |    |
- |   \\   / |  _| | |   | |   | | | || | | || || |    |
- |    | |  | |___| |___| |___| |_| || |_| || ||_|    |
- |    |_|  |_____|_____|_____|\\_____/\\_____/|_|(_)   |
- |                                                   |
- |            **** YELLOW TAKES THE CROWN **** |
- \\___________________________________________________/
+  _____________________________________
+ /                                     \\
+ |   **** YELLOW TAKES THE CROWN ****   |
+ \\_____________________________________/
 `;
     console.log(yellowWins);
     console.log('\n');
@@ -81,17 +84,12 @@ class Connect4 {
 
   private displayDraw(): void {
     console.clear();
+    this.displayGrid();
     const drawArt = `
-  ___________________________________________________
- /                                                   \\
- |   ____    ____        _        __        __       |
- |  |  _ \\  |  _ \\      / \\       \\ \\      / /       |
- |  | | | | | |_) |    / _ \\       \\ \\ /\\ / /        |
- |  | |_| | |  _ <    / ___ \\       \\ V  V /         |
- |  |____/  |_| \\_\\  /_/   \\_\\       \\_/\\_/          |
- |                                                   |
- |             --- THE BOARD IS FULL ---             |
- \\___________________________________________________/
+  ______________________________
+ /                              \\
+ |  --- THE BOARD IS FULL ---   |
+ \\_____________________________/
 `;
     console.log(drawArt);
     console.log('\n');
@@ -141,15 +139,15 @@ class Connect4 {
     column =
       parseInt(
         readline.question(
-          `${this.currentToken === token.red ? 'Red' : 'Yellow'} player: Choose a column to put your coin`,
+          `${this.currentToken === token.red ? RED : YELLOW} player: Choose a column to put your coin: `,
         ),
       ) - 1;
     while (isNaN(column) || !availableMoves.includes(column)) {
-      console.log('Pelase enter a valid column');
+      console.log('Please enter a valid column');
       column =
         parseInt(
           readline.question(
-            `${this.currentToken === token.red ? 'Red' : 'Yellow'} player: Choose a column to put your coin`,
+            `${this.currentToken === token.red ? RED : YELLOW} player: Choose a column to put your coin: `,
           ),
         ) - 1;
     }
@@ -194,7 +192,36 @@ class Connect4 {
       this.checkDiagLeftUp(c - 1, r + 1) +
       this.checkDiagRightDown(c + 1, r - 1);
 
-    return horizontal === 3 || diag1 === 3 || diag2 === 3 || down === 3;
+    if (diag1 >= 3) {
+      this.paintDiagLeftDown(c - 1, r - 1);
+      this.paintDiagRightUp(c + 1, r + 1);
+    }
+
+    if (diag2 >= 3) {
+      this.paintDiagLeftUp(c - 1, r + 1);
+      this.paintDiagRightDown(c + 1, r - 1);
+    }
+
+    if (horizontal >= 3) {
+      this.paintLeft(c - 1, r);
+      this.paintRight(c + 1, r);
+    }
+
+    if (down >= 3) this.paintBelow(c, r - 1);
+
+    if (horizontal >= 3 || diag1 >= 3 || diag2 >= 3 || down >= 3) {
+      console.log(this.grid);
+      this.grid[c][r] = token.win;
+    }
+
+    return horizontal >= 3 || diag1 >= 3 || diag2 >= 3 || down >= 3;
+  }
+
+  paintRight(c: number, r: number): void {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    if (this.grid[c][r] !== this.currentToken) return;
+    this.grid[c][r] = token.win;
+    this.paintRight(c + 1, r);
   }
 
   checkRight(c: number, r: number): number {
@@ -203,10 +230,24 @@ class Connect4 {
     return 1 + this.checkRight(c + 1, r);
   }
 
+  paintLeft(c: number, r: number): void {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    if (this.grid[c][r] !== this.currentToken) return;
+    this.grid[c][r] = token.win;
+    this.paintLeft(c - 1, r);
+  }
+
   checkLeft(c: number, r: number): number {
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 0;
     if (this.grid[c][r] !== this.currentToken) return 0;
     return 1 + this.checkLeft(c - 1, r);
+  }
+
+  paintBelow(c: number, r: number): void {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    if (this.grid[c][r] !== this.currentToken) return;
+    this.grid[c][r] = token.win;
+    this.paintBelow(c, r - 1);
   }
 
   checkBelow(c: number, r: number): number {
@@ -215,10 +256,24 @@ class Connect4 {
     return 1 + this.checkBelow(c, r - 1);
   }
 
+  paintDiagRightDown(c: number, r: number): void {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    if (this.grid[c][r] !== this.currentToken) return;
+    this.grid[c][r] = token.win;
+    this.paintDiagRightDown(c + 1, r - 1);
+  }
+
   checkDiagRightDown(c: number, r: number): number {
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 0;
     if (this.grid[c][r] !== this.currentToken) return 0;
     return 1 + this.checkDiagRightDown(c + 1, r - 1);
+  }
+
+  paintDiagRightUp(c: number, r: number): void {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    if (this.grid[c][r] !== this.currentToken) return;
+    this.grid[c][r] = token.win;
+    this.paintDiagRightUp(c + 1, r + 1);
   }
 
   checkDiagRightUp(c: number, r: number): number {
@@ -227,10 +282,24 @@ class Connect4 {
     return 1 + this.checkDiagRightDown(c + 1, r + 1);
   }
 
+  paintDiagLeftDown(c: number, r: number): void {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    if (this.grid[c][r] !== this.currentToken) return;
+    this.grid[c][r] = token.win;
+    this.paintDiagLeftDown(c - 1, r - 1);
+  }
+
   checkDiagLeftDown(c: number, r: number): number {
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 0;
     if (this.grid[c][r] !== this.currentToken) return 0;
     return 1 + this.checkDiagLeftDown(c - 1, r - 1);
+  }
+
+  paintDiagLeftUp(c: number, r: number): void {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    if (this.grid[c][r] !== this.currentToken) return;
+    this.grid[c][r] = token.win;
+    this.paintDiagLeftUp(c - 1, r + 1);
   }
 
   checkDiagLeftUp(c: number, r: number): number {
@@ -240,30 +309,42 @@ class Connect4 {
   }
 
   displayGrid(): void {
-    const RED = '🔴';
-    const YELLOW = '🟡';
-    const EMPTY = '⚪';
-    const BOARD_BORDER = '🟦';
-
     //console.clear();
-    console.log('  1  2  3  4  5  6  7  '); // Column headers
+    console.log('    1  2  3  4  5  6  7  '); // Column headers
+    console.log(BOARD_BORDER.repeat(COLS + 6));
 
     for (let r = ROWS - 1; r >= 0; r--) {
       let rowString = '';
       for (let c = 0; c < COLS; c++) {
         const cell = this.grid[c][r];
         // Choose the right icon
-        const icon =
-          cell === token.red ? RED : cell === token.yellow ? YELLOW : EMPTY;
+        let icon = RED;
+
+        switch (cell) {
+          case token.red:
+            icon = RED;
+            break;
+          case token.yellow:
+            icon = YELLOW;
+            break;
+          case token.win:
+            icon = WIN;
+            break;
+          default:
+            icon = EMPTY;
+            break;
+        }
         rowString += ` ${icon}`;
       }
-      console.log(rowString);
+      console.log(BOARD_BORDER + rowString + ' ' + BOARD_BORDER);
     }
 
     // Add a bottom border to make it look like a frame
-    console.log(BOARD_BORDER.repeat(COLS + 4));
+    console.log(BOARD_BORDER.repeat(COLS + 6));
   }
 }
 
-const game = new Connect4();
-game.start();
+if (require.main === module) {
+  const game = new Connect4();
+  game.start();
+}
